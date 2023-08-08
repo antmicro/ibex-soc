@@ -1,0 +1,59 @@
+stages:
+  - test
+
+rtl-tests:
+  stage: test
+  tags: ['ace-x86_64']
+
+  # TODO: This job uses the unstable Debian for its Verilator package version.
+  # This may be source of potential CI unstabilities not related to the project.
+  image: "debian:sid-slim"
+
+  variables:
+    GIT_SUBMODULE_STRATEGY: "recursive"
+    SCALENODE_CPU: 4
+
+  before_script:
+    - apt -qqy update >/dev/null
+    - apt -qqy install --no-install-recommends build-essential python3 python3-pip python3-venv python3-dev git verilator
+
+  script:
+    - python3 -m venv env
+    - source env/bin/activate
+    - pip install -r requirements.txt
+    - make -j 1 -k rtl-tests | tee run.log 2>&1
+
+  artifacts:
+    paths:
+      - run
+      - run.log
+    when: always
+
+sim-tests:
+  stage: test
+  tags: ['ace-x86_64']
+
+  # TODO: This job uses the unstable Debian for its Verilator package version.
+  # This may be source of potential CI unstabilities not related to the project.
+  image: "debian:sid-slim"
+
+  variables:
+    GIT_SUBMODULE_STRATEGY: "recursive"
+    SCALENODE_CPU: 4
+
+  before_script:
+    - apt -qqy update >/dev/null
+    - apt -qqy install --no-install-recommends build-essential git verilator wget gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf sigrok-cli
+
+  script:
+    - riscv64-unknown-elf-gcc --version
+    - riscv64-unknown-elf-gcc --print-multi-lib
+    - make -j -k sim-tests | tee run.log 2>&1
+
+  artifacts:
+    paths:
+      - build/filelist.f
+      - run
+      - run.log
+    when: always
+

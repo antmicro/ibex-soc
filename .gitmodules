@@ -1,0 +1,6 @@
+[submodule "third_party/ibex"]
+	path = third_party/ibex
+	url = https://github.com/lowRISC/ibex
+[submodule "third_party/opentitan"]
+	path = third_party/opentitan
+	url = https://github.com/lowRISC/opentitan
