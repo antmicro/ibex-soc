@@ -12,7 +12,6 @@ import inspect
 
 from migen import *
 
-from litex.soc.interconnect.csr import AutoCSR, CSRStorage, CSRStatus
 from litex.soc.interconnect import wishbone
 from litex.soc.integration.soc import LiteXSoC
 
@@ -26,8 +25,9 @@ from litedram import modules as litedram_modules
 from litedram.core import ControllerSettings
 from litedram.phy import lpddr4 as lpddr4_phys
 
-from dfi_injector import DFIInjector
-from dfi import Interface
+from litedram.dfii import DFIInjector
+
+import crg
 
 # ------------------------------------------------------------------------------
 
@@ -69,10 +69,6 @@ def get_common_ios():
 
         # Low-level memory control
         ("mem_rst", 0, Pins(1)),
-
-        # Init status.
-        ("init_done",  0, Pins(1)),
-        ("init_error", 0, Pins(1)),
     ]
 
 def get_dram_ios(core_config):
@@ -80,7 +76,7 @@ def get_dram_ios(core_config):
 
     # LPDDR4
     if core_config["memtype"] == "LPDDR4":
-        ca_width = 6 # TODO
+        ca_width = 6
         return [
             ("ddram", 0,
                 Subsignal("ca",      Pins(ca_width)),
@@ -97,19 +93,9 @@ def get_dram_ios(core_config):
             ),
         ]
 
-
-# DRAMCoreControl ----------------------------------------------------------------------------------
-
-class DRAMPHYControl(Module, AutoCSR):
-    def __init__(self):
-        self.init_start = CSRStatus()
-        self.init_done  = CSRStorage()
-        self.init_error = CSRStorage()
-
 # DRAMCoreSoC -------------------------------------------------------------------------------------
 
 class DRAMPHYSoC(LiteXSoC):
-
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
 
@@ -159,8 +145,13 @@ class DRAMPHYSoC(LiteXSoC):
 
         # Clock domain -----------------------------------------------------------------------------
 
-        if core_config["sdram_phy"] in [lpddr4_phys.A7LPDDR4PHY, lpddr4_phys.K7LPDDR4PHY, lpddr4_phys.V7LPDDR4PHY]:
-            domains = ("sys", "sys2x", "sys8x", "sys8x_90")
+        if "crg" in core_config:
+            self.submodules.crg = core_config["crg"](platform, core_config)
+        else:
+            if core_config["sdram_phy"] in [lpddr4_phys.K7LPDDR4PHY, lpddr4_phys.V7LPDDR4PHY]:
+                domains = ("sys", "sys2x", "sys8x", "idelay")
+            if core_config["sdram_phy"] in [lpddr4_phys.A7LPDDR4PHY]:
+                domains = ("sys", "sys2x", "sys8x", "sys8x_90", "idelay")
             self.add_clock_domains(platform, domains)
 
         # DRAM Interface ---------------------------------------------------------------------------
@@ -205,15 +196,6 @@ class DRAMPHYSoC(LiteXSoC):
             memtype     = phy.settings.memtype,
             strobes     = phy.settings.strobes,
             with_sub_channels = phy.settings.with_sub_channels)
-        
-        # Add DFI init control lines to original DFI Interface in PHY
-        # For now we're using PHY from LiteDRAM, which doesn't include init control
-        # in DFI interface Record.
-        ctl_layout = next(x for x in dfii.master.layout if x[0] == "ctl")
-        ctl_record = Record([ctl_layout])
-        setattr(phy.dfi, "ctl", ctl_record.ctl)
-        phy.dfi.layout.append(*ctl_record.layout)
-        print(ctl_record.__dict__)
 
         self.comb += dfii.master.connect(phy.dfi)
 
@@ -232,17 +214,8 @@ class DRAMPHYSoC(LiteXSoC):
 
         # DRAM Control/Status ----------------------------------------------------------------------
 
-        # Expose calibration status to user.
-        self.submodules.ddrctrl = DRAMPHYControl()
-        self.comb += [
-            self.ddrctrl.init_start.status.eq(ctl_record.ctl.init_start),
-            ctl_record.ctl.init_complete.eq(self.ddrctrl.init_done)
-
-        ]
-        #self.comb += platform.request("init_done").eq()
-        #self.comb += platform.request("init_error").eq(self.ddrctrl.init_error.storage)
-
         # Expose a bus control interface to user.
+        # TODO: export CSR bus instead
         wb_bus = wishbone.Interface()
         self.bus.add_master(master=wb_bus)
         platform.add_extension(wb_bus.get_ios("wb_ctrl"))
@@ -338,12 +311,14 @@ def main():
         for r in replaces.keys():
             if v == r:
                 core_config[k] = replaces[r]
-        if "clk_freq" in k:
+        if k.endswith("clk_freq"):
             core_config[k] = float(core_config[k])
         if k == "sdram_module":
             core_config[k] = getattr(litedram_modules, core_config[k])
         if k == "sdram_phy":
             core_config[k] = getattr(lpddr4_phys, core_config[k])
+        if k == "crg":
+            core_config[k] = getattr(crg, core_config[k])
 
     # Generate core --------------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@
     "speedgrade": -1,          # FPGA speedgrade
 
     # SDRAM --------------------------------------------------------------------
-    "sdram_phy":        "A7LPDDR4PHY",   # PHY type
+    "sdram_phy":        "K7LPDDR4PHY",   # PHY type
     "memtype":          "LPDDR4",        # DRAM type
     "sdram_module":     "MT53E256M16D1", # SDRAM modules of the board or SO-DIMM
     "sdram_data_nb":    16,              # Number of data bits
@@ -25,6 +25,8 @@
     #"dfi_bankbits":     3,
 
     # Frequency ----------------------------------------------------------------
+    "crg":              "XilinxK7CRG",
+    "input_clk_freq":   100e6,
     "sys_clk_freq":     75e6,  # System clock frequency
     "iodelay_clk_freq": 200e6,
 
