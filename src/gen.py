@@ -28,6 +28,7 @@ from litedram.phy import lpddr4 as lpddr4_phys
 from litedram.dfii import DFIInjector
 
 import crg
+from litex.build.xilinx import platform as xilinx_plat
 
 # ------------------------------------------------------------------------------
 
@@ -319,6 +320,8 @@ def main():
             core_config[k] = getattr(lpddr4_phys, core_config[k])
         if k == "crg":
             core_config[k] = getattr(crg, core_config[k])
+        if k == "platform":
+            core_config[k] = getattr(xilinx_plat, core_config[k])
 
     # Generate core --------------------------------------------------------------------------------
 
@@ -333,7 +336,8 @@ def main():
         "csr_csv":          os.path.join(args.output_dir, "csr.csv")
     }
 
-    platform = NoPlatform("", io=[])
+    platform_obj = core_config["platform"] if "platform" in core_config else NoPlatform
+    platform = platform_obj("", io=[])
     soc     = DRAMPHYSoC(platform, core_config)
     builder = Builder(soc, **builder_arguments)
     builder.build(build_name=args.name, regular_comb=False)
