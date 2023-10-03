@@ -147,7 +147,9 @@ class DRAMPHYSoC(LiteXSoC):
         # Clock domain -----------------------------------------------------------------------------
 
         if "crg" in core_config:
-            self.submodules.crg = core_config["crg"](platform, core_config)
+            self.submodules.crg = crg_instance = core_config["crg"](platform, core_config)
+            self.comb += crg_instance.rst.eq(platform.request("rst"))
+            self.add_clock_domains_outputs(platform, crg_instance)
         else:
             if core_config["sdram_phy"] in [lpddr4_phys.K7LPDDR4PHY, lpddr4_phys.V7LPDDR4PHY]:
                 domains = ("sys", "sys2x", "sys8x", "idelay")
@@ -248,34 +250,48 @@ class DRAMPHYSoC(LiteXSoC):
             pad = getattr(pads, name)
             self.comb += signal.eq(pad)
 
-    def add_clock_domains(self, platform, domains):
+    def expose_cd(self, platform, cd, ext_crg = False):
         """
         Exposes clock and reset signals for declared clock domains
         by creating a platform extensions with pads that match clock and reset signals.
         Connects clock and reset signals to the pads.
         """
 
-        for domain in domains:
-            setattr(self, "cd_%s" % (domain), ClockDomain(domain))
+        # Add clock/reset pads
+        extension = []
+        for sig in ("clk", "rst"):
+            pad_name = "{}_{}".format(sig, cd.name)
+            extension.append((pad_name, 0, Pins(1)))
+        platform.add_extension(extension)
 
-            if domain == "sys":
-                self.comb += [
-                    self.cd_sys.clk.eq(platform.request("clk")),
-                    self.cd_sys.rst.eq(platform.request("rst")),
-                ]
+        # Connect clock/reset pads
+        for sig in ("clk", "rst"):
+            pad_name = "{}_{}".format(sig, cd.name)
+            pad = platform.request(pad_name)
+            if ext_crg:
+                self.comb += pad.eq(getattr(cd, sig))
             else:
-                # Add clock/reset pads
-                extension = []
-                for name in ("clk", "rst"):
-                    pad_name = "{}_{}".format(name, domain)
-                    extension.append((pad_name, 0, Pins(1)))
-                platform.add_extension(extension)
+                self.comb += getattr(cd, sig).eq(pad)
 
-                # Connect clock/reset pads
-                for name in ("clk", "rst"):
-                    pad_name = "{}_{}".format(name, domain)
-                    pad = platform.request(pad_name)
-                    self.comb += getattr(getattr(self, "cd_%s" % (domain)), name).eq(pad)
+    def add_clock_domains(self, platform, domains):
+        """
+        Exposes clock and reset signals for declared clock domains without CRG
+        """
+
+        for domain in domains:
+            cd = ClockDomain(domain)
+            self.expose_cd(platform, cd, ext_crg = False)
+            setattr(self, cd.name, cd)
+
+    def add_clock_domains_outputs(self, platform, crg):
+        """
+        Exposes clock and reset signals for clock domains in existing CRG
+        """
+        for attr_name in dir(crg):
+            attr = getattr(crg, attr_name)
+            if type(attr) is ClockDomain:
+                self.expose_cd(platform, attr, ext_crg = True)
+
 
 
 # Build --------------------------------------------------------------------------------------------
