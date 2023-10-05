@@ -240,12 +240,12 @@ class DRAMPHYSoC(LiteXSoC):
 
         # Connect DFI pads
         pads = platform.request("dfi")
-        for name, signal in dfi.get_standard_names(s2m=False):
+        for name, signal in dfi.get_standard_names(m2s=False):
             name = name.replace("dfi_", "")
             pad = getattr(pads, name)
             self.comb += pad.eq(signal)
 
-        for name, signal in dfi.get_standard_names(m2s=False):
+        for name, signal in dfi.get_standard_names(s2m=False):
             name = name.replace("dfi_", "")
             pad = getattr(pads, name)
             self.comb += signal.eq(pad)
@@ -313,8 +313,8 @@ def main():
     parser.add_argument(
         "--name",
         type=str,
-        default="dram_ctrl",
-        help="Standalone core/module name"
+        default="dram_phy",
+        help="Standalone PHY name"
     )
 
     args = parser.parse_args()
