@@ -211,10 +211,6 @@ class DRAMPHYSoC(LiteXSoC):
                 controller_settings_kwargs[name] = core_config[name]
         controller_settings = controller_settings = ControllerSettings(**controller_settings_kwargs)
 
-        # Low-level PHY interface
-        pad = self.platform.request("mem_rst")
-        self.comb += pad.eq(phy._rst.storage)
-
         # DRAM Control/Status ----------------------------------------------------------------------
 
         # Expose a bus control interface to user.
