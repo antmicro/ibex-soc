@@ -1,3 +1,7 @@
+/* Copyright Antmicro 2023
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "Vsim_top.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"

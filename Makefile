@@ -32,6 +32,10 @@ OPENTITAN_SOURCES := \
     $(shell find $(OPENTITAN_DIR)/hw/ip/uart/rtl/ -name "*.sv" -not -name "*pkg*") \
     $(shell find $(OPENTITAN_DIR)/hw/ip/tlul/rtl/ -name "*.sv" -not -name "*pkg*" -not -name "*lc*")
 
+RDL_SOURCES := \
+    $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr_pkg.sv \
+    $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr.sv
+
 SOURCES := $(shell find rtl/ -name "*.sv" -not -name "*pkg*")
 
 INCLUDES := \
@@ -49,10 +53,14 @@ $(BUILD_DIR)/filelist.f: | $(BUILD_DIR)
 	@$(foreach f,$(PKG_SOURCES),       echo   "$(f)" >> $@;)
 	@$(foreach f,$(IBEX_SOURCES),      echo   "$(f)" >> $@;)
 	@$(foreach f,$(OPENTITAN_SOURCES), echo   "$(f)" >> $@;)
+	@$(foreach f,$(RDL_SOURCES),       echo   "$(f)" >> $@;)
 	@$(foreach f,$(SOURCES),           echo   "$(f)" >> $@;)
 	@$(foreach f,$(INCLUDES),          echo "-I$(f)" >> $@;)
 
-$(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f $(SOURCES) | $(BUILD_DIR)
+$(RDL_SOURCES):
+	peakrdl regblock $(RTL_DIR)/gpio.rdl -o $(BUILD_DIR)/dfi_gpio --cpuif passthrough
+
+$(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $(BUILD_DIR)
 	@verilator --version
 	verilator --Mdir $(BUILD_DIR)/verilator --cc --exe --top-module sim_top \
         -DRVFI=1 \
@@ -71,7 +79,7 @@ $(RUN_DIR):
 RTL_TESTS := $(shell find $(TESTS_DIR)/rtl/ -mindepth 1 -maxdepth 1 -type d -not -path "*/__pycache__" -printf "%f ")
 
 define rtl_test_target
-rtl-test-$(1): | $(RUN_DIR)
+rtl-test-$(1): $(RDL_SOURCES) | $(RUN_DIR)
 	mkdir -p $(RUN_DIR)/rtl/$(1)
 	cd $(RUN_DIR)/rtl/$(1) && $$(MAKE) -f $(TESTS_DIR)/rtl/$(1)/Makefile sim
 endef

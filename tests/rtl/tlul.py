@@ -89,7 +89,7 @@ class MasterInterface:
         """
         cocotb.fork(self.process())
 
-    async def _transfer(self, opcode, address=None, data=None, mask=None):
+    async def _transfer(self, opcode, address=None, data=None, mask=0xf):
         """
         Issues a TileLink UL transfer and enqueues it so that the response
         can be properly interpreted
@@ -302,7 +302,7 @@ class SlaveInterface:
                 opcode = ReqOpcode(opcode)
 
                 # Handle the request
-                cocotb.fork(self.request_handler(
+                cocotb.start_soon(self.request_handler(
                     opcode, address, data, mask, source_id)
                 )
 

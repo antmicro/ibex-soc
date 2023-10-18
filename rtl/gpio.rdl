@@ -1,0 +1,18 @@
+// Copyright Antmicro 2023
+// SPDX-License-Identifier: Apache-2.0
+
+addrmap dfi_gpio_csr {
+    desc = "GPIO CSR component to communicate between MC and PHY SoC";
+
+    reg{
+        name = "DFI init start";
+        desc = "Initialize memory training via DFI";
+        field {sw=r; hw=w;} start;
+    } init_start;
+
+    reg {
+        name = "DFI init done";
+        desc = "Memory training status";
+        field {sw=w; hw=r;} done;
+    } init_done;
+};

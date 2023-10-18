@@ -25,7 +25,7 @@ rtl-tests:
 
   artifacts:
     paths:
-      - run
+      - build/run
       - run.log
     when: always
 
@@ -40,12 +40,16 @@ sim-tests:
   variables:
     GIT_SUBMODULE_STRATEGY: "recursive"
     SCALENODE_CPU: 4
+    SCALENODE_RAM: 8192
 
   before_script:
     - apt -qqy update >/dev/null
-    - apt -qqy install --no-install-recommends build-essential git verilator wget gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf sigrok-cli
+    - apt -qqy install --no-install-recommends build-essential git verilator wget gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf sigrok-cli python3 python3-pip python3-venv python3-dev
 
   script:
+    - python3 -m venv env
+    - source env/bin/activate
+    - pip install -r requirements.txt
     - riscv64-unknown-elf-gcc --version
     - riscv64-unknown-elf-gcc --print-multi-lib
     - make -j -k sim-tests | tee run.log 2>&1
@@ -53,7 +57,7 @@ sim-tests:
   artifacts:
     paths:
       - build/filelist.f
-      - run
+      - build/run
       - run.log
     when: always
 

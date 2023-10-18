@@ -1,3 +1,7 @@
+/* Copyright Antmicro 2023
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <stdint.h>
 
 // Base address of the UART peripheral

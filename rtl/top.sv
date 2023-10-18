@@ -19,7 +19,11 @@ module top
 
     // UART
     output logic tx,
-    input  logic rx
+    input  logic rx,
+
+    // DFI memory training interface
+    input  logic dfi_init_start_i,
+    output logic dfi_init_done_o
 );
 
   // CPU TileLink bus
@@ -82,6 +86,18 @@ module top
     .ram_i          (ram_i)
   );
 
+  // DFI memory training GPIO interface
+  dfi_gpio u_dfi_gpio (
+    .clk_i            (clk_i),
+    .rst_ni           (rst_ni),
+
+    .tl_i             (tl_dev_h2d[0]),
+    .tl_o             (tl_dev_d2h[0]),
+
+    .dfi_init_start_i (dfi_init_start_i),
+    .dfi_init_done_o  (dfi_init_done_o)
+  );
+
   // UART
   uart u_uart (
     .clk_i          (clk_i),
@@ -103,5 +119,4 @@ module top
     .intr_rx_timeout_o      (),
     .intr_rx_parity_err_o   ()
   );
-
 endmodule

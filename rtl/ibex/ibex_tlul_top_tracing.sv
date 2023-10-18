@@ -1,4 +1,5 @@
-// Copyright Antmicro
+// Copyright Antmicro 2023
+// SPDX-License-Identifier: Apache-2.0
 
 /**
  * Top level module of the ibex RISC-V core with tracing enabled
