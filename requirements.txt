@@ -1,3 +1,6 @@
 pytest
 cocotb
 peakrdl
+git+https://github.com/m-labs/migen@ccaee68e
+git+https://github.com/antmicro/litex@77b227a1
+git+https://github.com/antmicro/litedram@c78de945

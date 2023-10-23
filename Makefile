@@ -6,6 +6,8 @@ RTL_DIR:=$(ROOT_DIR)/rtl
 BUILD_DIR:=$(ROOT_DIR)/build
 RUN_DIR:=$(BUILD_DIR)/run
 TESTS_DIR:=$(ROOT_DIR)/tests
+SRC_DIR:=$(ROOT_DIR)/src
+PHY_CONFIG ?= $(SRC_DIR)/standalone-dfi.yml
 
 PKG_SOURCES := \
     $(RTL_DIR)/pkg/top_pkg.sv \
@@ -43,12 +45,18 @@ INCLUDES := \
     $(OPENTITAN_DIR)/hw/ip/prim/rtl \
     $(IBEX_DIR)/vendor/lowrisc_ip/dv/sv/dv_utils
 
+GENERATED := generated/gateware/phy_core.v
+
 all: verilator-build
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/filelist.f: | $(BUILD_DIR)
+$(BUILD_DIR)/$(GENERATED): | $(BUILD_DIR)
+	python3 $(SRC_DIR)/gen.py --output-dir $(BUILD_DIR)/generated --name phy_core \
+	$(PHY_CONFIG)
+
+$(BUILD_DIR)/filelist.f: $(BUILD_DIR)/$(GENERATED) | $(BUILD_DIR)
 	@rm -rf $@
 	@$(foreach f,$(PKG_SOURCES),       echo   "$(f)" >> $@;)
 	@$(foreach f,$(IBEX_SOURCES),      echo   "$(f)" >> $@;)
@@ -56,6 +64,7 @@ $(BUILD_DIR)/filelist.f: | $(BUILD_DIR)
 	@$(foreach f,$(RDL_SOURCES),       echo   "$(f)" >> $@;)
 	@$(foreach f,$(SOURCES),           echo   "$(f)" >> $@;)
 	@$(foreach f,$(INCLUDES),          echo "-I$(f)" >> $@;)
+	@echo $< >> $@
 
 $(RDL_SOURCES):
 	peakrdl regblock $(RTL_DIR)/gpio.rdl -o $(BUILD_DIR)/dfi_gpio --cpuif passthrough
