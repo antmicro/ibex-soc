@@ -9,17 +9,27 @@ import os
 import yaml
 import argparse
 import inspect
+import logging
 
 from migen import *
 
-from litex.soc.interconnect import wishbone
+from litex.gen import colorer
+from litex.gen import LiteXModule
+from litex.gen.fhdl.hierarchy import LiteXHierarchyExplorer
+
 from litex.soc.integration.soc import LiteXSoC
+from litex.soc.integration.soc import SoCConstant, SoCCSRHandler, SoCRegion, SoCCSRRegion
+
+from litex.soc.interconnect.csr import CSR, CSRStorage, CSRStatus
+from litex.soc.interconnect import csr_bus
+
+from litex.soc.cores.cpu import CPUNone
+
+from litex.compat.soc_core import SoCCoreCompat
 
 from litex.build.generic_toolchain import GenericToolchain
 from litex.build.generic_platform import GenericPlatform, Pins, Subsignal
 from litex.soc.integration.builder import Builder
-
-from litedram.frontend.wishbone import *
 
 from litedram import modules as litedram_modules
 from litedram.core import ControllerSettings
@@ -94,57 +104,87 @@ def get_dram_ios(core_config):
             ),
         ]
 
-# DRAMCoreSoC -------------------------------------------------------------------------------------
+# DRAMPHYSoC -------------------------------------------------------------------------------------
 
-class DRAMPHYSoC(LiteXSoC):
+class SysBusHandler:
+    """
+    A dummy sysbus handler to provide memory regions
+    """
+    def __init__(self, regions):
+        self.regions = regions
+
+
+class DRAMPHYSoC(LiteXModule, SoCCoreCompat):
+    """
+    The PHY core SoC
+    """
+
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
 
-        # Parameters -------------------------------------------------------------------------------
-        sys_clk_freq   = core_config["sys_clk_freq"]
-        csr_data_width = core_config.get("csr_data_width", 32)
-        csr_base       = core_config.get("csr_base", 0xF0000000)
-        rate           = "1:{}".format(core_config.get("sdram_ratio", 8))
+        csr_base            = core_config.get("csr_base", 0x00000000)
+        csr_data_width      = 32
+        csr_address_width   = 10    # 1024
+        csr_paging          = 0x100 # 256
+        csr_ordering        = "big"
+        csr_reserved_csrs   = {}
 
-        # SoCCore ----------------------------------------------------------------------------------
+        # SoC attributes ------------------------------------------------------
+        self.platform       = platform
+        self.sys_clk_freq   = int(core_config["sys_clk_freq"])
 
-        LiteXSoC.__init__(self, platform, sys_clk_freq,
-            bus_standard         = "wishbone",
-            bus_data_width       = 32,
-            bus_address_width    = 32,
-            bus_timeout          = 1e6,
-            bus_bursting         = False,
-            bus_interconnect     = "shared",
-            bus_reserved_regions = {},
-
-            csr_data_width       = 32,
-            csr_address_width    = 14,
-            csr_paging           = 0x800,
-            csr_ordering         = "big",
-            csr_reserved_csrs    = {},
-
-            irq_n_irqs           = 0,
-            irq_reserved_irqs    = {},
-        )
-
-        # Attributes
         self.config         = {}
         self.cpu_type       = None
 
-        self.clk_freq       = self.sys_clk_freq
-
+        self.constants      = {}
         self.csr_regions    = {}
-        self.mem_regions    = self.bus.regions
+
+        self.mem_regions    = {
+            "csr":  SoCRegion(
+                origin  = csr_base,
+                size    = 0x400,
+                mode    = "rw",
+            )
+        }
+
         self.mem_map        = {
             "csr":  csr_base,
         }
 
-        self.wb_slaves      = {}
+        self.constants["CONFIG_CLOCK_FREQUENCY"] = SoCConstant(self.sys_clk_freq)
 
-        # Dummy CPU
-        self.add_cpu("None")
+        if not len(logging.root.handlers):
+            logging.basicConfig(level=logging.INFO)
 
-        # Clock domain -----------------------------------------------------------------------------
+        self.logger = logging.getLogger("SoC")
+        self.logger.info("FPGA device : {}.".format(platform.device))
+        self.logger.info("System clock: {:3.3f}MHz.".format(self.sys_clk_freq/1e6))
+
+        # CPU -----------------------------------------------------------------
+        self.cpu = CPUNone()
+
+        # System Bus Handler --------------------------------------------------
+        self.bus = SysBusHandler(
+            regions = self.mem_regions,
+        )
+
+        # CSR Bus Handler -----------------------------------------------------
+
+        # FIXME: Override some constants in the class to allow non-standard
+        # CSR address width and paging
+        SoCCSRHandler.supported_address_width = [csr_address_width]
+        SoCCSRHandler.supported_paging        = [csr_paging]
+
+        self.csr = SoCCSRHandler(
+            data_width      = csr_data_width,
+            address_width   = csr_address_width,
+            alignment       = csr_data_width,
+            paging          = csr_paging,
+            ordering        = csr_ordering,
+            reserved_csrs   = csr_reserved_csrs,
+        )
+
+        # Clock domain --------------------------------------------------------
 
         if "crg" in core_config:
             self.submodules.crg = crg_instance = core_config["crg"](platform, core_config)
@@ -157,7 +197,8 @@ class DRAMPHYSoC(LiteXSoC):
                 domains = ("sys", "sys2x", "sys8x", "sys8x_90", "idelay")
             self.add_clock_domains(platform, domains)
 
-        # DRAM Interface ---------------------------------------------------------------------------
+        # DRAM Interface ------------------------------------------------------
+        rate = "1:{}".format(core_config.get("sdram_ratio", 8))
 
         sdram_module_def = core_config["sdram_module"]
         timing_settings = True
@@ -167,7 +208,7 @@ class DRAMPHYSoC(LiteXSoC):
             setattr(sdram_module_def, "nrows", core_config.get("sdram_rows", 8192))
             setattr(sdram_module_def, "ncols", core_config.get("sdram_cols", 1024))
             setattr(sdram_module_def, "timing_settings", None)
-        sdram_module = sdram_module_def(sys_clk_freq, rate=rate, timing_settings=timing_settings)
+        sdram_module = sdram_module_def(self.sys_clk_freq, rate=rate, timing_settings=timing_settings)
 
         # Collect Electrical Settings.
         electrical_settings_kwargs = {}
@@ -175,7 +216,7 @@ class DRAMPHYSoC(LiteXSoC):
             if core_config.get(name, None) is not None:
                 electrical_settings_kwargs[name] = core_config[name]
 
-        # PHY --------------------------------------------------------------------------------------
+        # PHY -----------------------------------------------------------------
 
         # LPDDR4PHY.
         platform.add_extension(get_dram_ios(core_config))
@@ -183,12 +224,12 @@ class DRAMPHYSoC(LiteXSoC):
             assert core_config["memtype"] in ["LPDDR4"]
             self.submodules.ddrphy = phy = core_config["sdram_phy"](
                 pads             = platform.request("ddram"),
-                sys_clk_freq     = sys_clk_freq,
+                sys_clk_freq     = self.sys_clk_freq,
                 iodelay_clk_freq = core_config["iodelay_clk_freq"])
         else:
             raise NotImplementedError
 
-        # DFI Injector -----------------------------------------------------------------------------
+        # DFI Injector --------------------------------------------------------
 
         self.submodules.dfii = dfii = DFIInjector(
             addressbits = max(sdram_module.geom_settings.addressbits, getattr(phy, "addressbits", 0)),
@@ -211,15 +252,112 @@ class DRAMPHYSoC(LiteXSoC):
                 controller_settings_kwargs[name] = core_config[name]
         controller_settings = controller_settings = ControllerSettings(**controller_settings_kwargs)
 
-        # DRAM Control/Status ----------------------------------------------------------------------
+        # DRAM Control/Status -------------------------------------------------
 
-        # Expose a bus control interface to user.
-        # TODO: export CSR bus instead
-        wb_bus = wishbone.Interface()
-        self.bus.add_master(master=wb_bus)
-        platform.add_extension(wb_bus.get_ios("wb_ctrl"))
-        wb_pads = platform.request("wb_ctrl")
-        self.comb += wb_bus.connect_to_pads(wb_pads, mode="slave")
+        def get_csr_bus_ios(bus, bus_name="csr"):
+            """
+            Creates a platform extension with CSR bus IOs
+            """
+            subsignals = []
+            for name, width, direction in bus.layout:
+                subsignals.append(Subsignal(name, Pins(width)))
+            ios = [(bus_name , 0) + tuple(subsignals)]
+            return ios
+
+        def connect_csr_bus_to_pads(bus, pads):
+            """
+            Connects CSR bus to IO pags
+            """
+            r = []
+            for name, width, direction in bus.layout:
+                sig  = getattr(bus,  name)
+                pad  = getattr(pads, name)
+                if direction == DIR_S_TO_M:
+                    r.append(pad.eq(sig))
+                else:
+                    r.append(sig.eq(pad))
+            return r
+
+        ctl_bus = csr_bus.Interface(
+            address_width = self.csr.address_width,
+            data_width    = self.csr.data_width
+        )
+        self.csr.add_master(master=ctl_bus)
+        platform.add_extension(get_csr_bus_ios(ctl_bus))
+        ctl_pads = platform.request("csr")
+        self.comb += connect_csr_bus_to_pads(ctl_bus, ctl_pads)
+
+    # SoC finalization --------------------------------------------------------
+    def finalize(self):
+        """
+        Finalizes the SoC
+        """
+
+        if self.finalized:
+            return
+
+        # SoC Main CSRs collection --------------------------------------------
+
+        # Collect CSRs created on the Main Module.
+        main_csrs = dict()
+        for name, obj in self.__dict__.items():
+            if isinstance(obj, (CSR, CSRStorage, CSRStatus)):
+                main_csrs[name] = obj
+
+        # Add Main CSRs to a "main" Sub-Module and delete it from Main Module.
+        if main_csrs:
+            self.main = LiteXModule()
+            for name, csr in main_csrs.items():
+                setattr(self.main, name, csr)
+                delattr(self, name)
+
+        # SoC CSR Interconnect ------------------------------------------------
+        self.csr_bankarray = csr_bus.CSRBankArray(self,
+            address_map        = self.csr.address_map,
+            data_width         = self.csr.data_width,
+            address_width      = self.csr.address_width,
+            alignment          = self.csr.alignment,
+            paging             = self.csr.paging,
+            ordering           = self.csr.ordering)
+
+        if len(self.csr.masters):
+            self.csr_interconnect = csr_bus.InterconnectShared(
+                masters = list(self.csr.masters.values()),
+                slaves  = self.csr_bankarray.get_buses())
+
+        # Add CSRs regions.
+        for name, csrs, mapaddr, rmap in self.csr_bankarray.banks:
+            self.csr.add_region(name, SoCCSRRegion(
+                origin   = (self.bus.regions["csr"].origin + self.csr.paging*mapaddr),
+                busword  = self.csr.data_width,
+                obj      = csrs))
+
+        # Add Memory regions.
+        for name, memory, mapaddr, mmap in self.csr_bankarray.srams:
+            self.csr.add_region(name + "_" + memory.name_override, SoCCSRRegion(
+                origin  = (self.bus.regions["csr"].origin + self.csr.paging*mapaddr),
+                busword = self.csr.data_width,
+                obj     = memory))
+
+        # Sort CSR regions by origin.
+        self.csr.regions = {k: v for k, v in sorted(self.csr.regions.items(), key=lambda item: item[1].origin)}
+
+        # Add CSRs / Config items to constants.
+        for name, constant in self.csr_bankarray.constants:
+            self.add_constant(name + "_" + constant.name, constant.value.value)
+
+        # Finalize submodules -------------------------------------------------
+        Module.finalize(self)
+
+        # Compat --------------------------------------------------------------
+        self.finalize_csr_regions()
+
+        # SoC Hierarchy -------------------------------------------------------
+        self.logger.info(colorer("-"*80, color="bright"))
+        self.logger.info(colorer("SoC Hierarchy:"))
+        self.logger.info(colorer("-"*80, color="bright"))
+        self.logger.info(LiteXHierarchyExplorer(top=self, depth=None))
+        self.logger.info(colorer("-"*80, color="bright"))
 
     def expose_dfi(self, platform, dfi):
         """
@@ -288,6 +426,16 @@ class DRAMPHYSoC(LiteXSoC):
             if type(attr) is ClockDomain:
                 self.expose_cd(platform, attr, ext_crg = True)
 
+    # SoC build ------------------------------------------------------------------------------------
+    def get_build_name(self):
+        return getattr(self, "build_name", self.platform.name)
+
+    def build(self, *args, **kwargs):
+        self.build_name = kwargs.pop("build_name", self.platform.name)
+        if self.build_name[0].isdigit():
+            self.build_name = f"_{self.build_name}"
+        kwargs.update({"build_name": self.build_name})
+        return self.platform.build(self, *args, **kwargs)
 
 
 # Build --------------------------------------------------------------------------------------------
