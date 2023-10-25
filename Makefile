@@ -8,6 +8,7 @@ RUN_DIR:=$(BUILD_DIR)/run
 TESTS_DIR:=$(ROOT_DIR)/tests
 SRC_DIR:=$(ROOT_DIR)/src
 PHY_CONFIG ?= $(SRC_DIR)/standalone-dfi.yml
+XILINX_UNISIM_LIBRARY = $(ROOT_DIR)/third_party/XilinxUnisimLibrary/verilog/src
 
 PKG_SOURCES := \
     $(RTL_DIR)/pkg/top_pkg.sv \
@@ -39,8 +40,18 @@ RDL_SOURCES := \
     $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr.sv
 
 SOURCES := $(shell find rtl/ -name "*.sv" -not -name "*pkg*")
+SOURCES += \
+    $(XILINX_UNISIM_LIBRARY)/unisims/OSERDESE2.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/ODELAYE2.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/ISERDESE2.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/IDELAYE2.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/IOBUF.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/FDCE.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/BUFG.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/IDELAYCTRL.v
 
 INCLUDES := \
+    $(XILINX_UNISIM_LIBRARY)/glbl.v \
     $(IBEX_DIR)/rtl \
     $(OPENTITAN_DIR)/hw/ip/prim/rtl \
     $(IBEX_DIR)/vendor/lowrisc_ip/dv/sv/dv_utils
@@ -76,6 +87,7 @@ $(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $
         -Wno-fatal \
         --timing \
         --trace --trace-structs \
+        --bbox-unsup \
         $(shell cat $<) ../../src/testbench.cpp
 	$(MAKE) -C $(BUILD_DIR)/verilator -f Vsim_top.mk
 	@touch $@

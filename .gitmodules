@@ -4,3 +4,6 @@
 [submodule "third_party/opentitan"]
 	path = third_party/opentitan
 	url = https://github.com/lowRISC/opentitan
+[submodule "third_party/XilinxUnisimLibrary"]
+	path = third_party/XilinxUnisimLibrary
+	url = https://github.com/Xilinx/XilinxUnisimLibrary.git
