@@ -1,31 +1,21 @@
 // Copyright Antmicro 2023
 // SPDX-License-Identifier: Apache-2.0
 
-module top 
-    import top_pkg::*;
-    import mem_pkg::*;
-    import tlul_pkg::*;
+module phy
+  import top_pkg::*;
+  import tlul_pkg::*;
 (
-    // Clock and reset
-    input  wire clk_i,
-    input  wire rst_ni,
+    input  wire        clk,
+    input  wire        rst,
+    output wire        clk_idelay,
+    output wire        rst_idelay,
+    output wire        clk_sys,
+    output wire        rst_sys,
+    output wire        clk_sys2x,
+    output wire        rst_sys2x,
+    output wire        clk_sys8x,
+    output wire        rst_sys8x,
 
-    // ROM interface
-    output mem_pkg::mem_h2d_t rom_o,
-    input  mem_pkg::mem_d2h_t rom_i,
-    // RAM interface
-    output mem_pkg::mem_h2d_t ram_o,
-    input  mem_pkg::mem_d2h_t ram_i,
-
-    // UART
-    output logic tx,
-    input  logic rx,
-
-    // DFI memory training interface
-    input  logic dfi_init_start_i,
-    output logic dfi_init_done_o,
-
-    // DDR memory
     output wire [ 5:0] ddram_ca,
     output wire        ddram_cs,
     inout  wire [15:0] ddram_dq,
@@ -37,8 +27,6 @@ module top
     output wire        ddram_cke,
     output wire        ddram_odt,
     output wire        ddram_reset_n,
-
-    // DDR PHY
     input  wire        dfi_cke_p0,
     input  wire        dfi_reset_n_p0,
     input  wire        dfi_mode_2n_p0,
@@ -182,125 +170,40 @@ module top
     input  wire [ 3:0] dfi_wrdata_mask_p7,
     input  wire        dfi_rddata_en_p7,
     output wire [31:0] dfi_rddata_w7,
-    output wire        dfi_rddata_valid_w7
+    output wire        dfi_rddata_valid_w7,
+
+    input  tlul_pkg::tl_h2d_t tl_i,
+    output tlul_pkg::tl_d2h_t tl_o
 );
 
-  // CPU TileLink bus
-  tlul_pkg::tl_h2d_t tl_cpu_h2d;
-  tlul_pkg::tl_d2h_t tl_cpu_d2h;
+  wire [ 9:0] csr_adr;
+  wire        csr_we;
+  wire [31:0] csr_dat_w;
+  wire [31:0] csr_dat_r;
 
-  // External TileLink bus
-  tlul_pkg::tl_h2d_t tl_ext_h2d;
-  tlul_pkg::tl_d2h_t tl_ext_d2h;
+  phy_core u_phy_core (.*);
 
-  // CRG
-  wire clk_idelay;
-  wire rst_idelay;
-  wire clk_sys;
-  wire rst_sys;
-  wire clk_sys2x;
-  wire rst_sys2x;
-  wire clk_sys8x;
-  wire rst_sys8x;
-  wire rst_sys_n;
+  tlul_adapter_reg #(
+      .RegAw(top_pkg::TL_AW),
+      .RegDw(top_pkg::TL_DW)
+  ) u_tlul_adapter_reg (
+      .clk_i (clk),
+      .rst_ni(~rst),
 
-  assign rst_sys_n = ~rst_sys;
+      .tl_i(tl_i),
+      .tl_o(tl_o),
 
-  // CPU
-  cpu u_cpu (
-    .clk_i          (clk_sys),
-    .rst_ni         (rst_sys_n),
+      .en_ifetch_i (MuBi4True),
+      .intg_error_o(), // unused
 
-    .tl_o           (tl_cpu_h2d),
-    .tl_i           (tl_cpu_d2h),
-
-    .core_rst_ni    (rst_sys_n),
-    .boot_addr_i    (32'h80000000), // FIXME: Temporary.
-    .fetch_enable_i (1'b1),
-    .timer_irq_i    (1'b0)
-  );
-
-  // Memory TileLink bus
-  tlul_pkg::tl_h2d_t tl_mem_h2d;
-  tlul_pkg::tl_d2h_t tl_mem_d2h;
-
-  // Device TileLink buses
-  tlul_pkg::tl_h2d_t tl_dev_h2d[7];
-  tlul_pkg::tl_d2h_t tl_dev_d2h[7];
-
-  // System bus crossbar
-  xbar u_xbar (
-    .clk_i          (clk_sys),
-    .rst_ni         (rst_sys_n),
-
-    .tl_h_i         ('{tl_ext_h2d, tl_cpu_h2d}),
-    .tl_h_o         ('{tl_ext_d2h, tl_cpu_d2h}),
-
-    .tl_m_i         (tl_mem_d2h),
-    .tl_m_o         (tl_mem_h2d),
-
-    .tl_d_i         (tl_dev_d2h),
-    .tl_d_o         (tl_dev_h2d)
-  );
-
-  // System memory interface
-  mem u_mem (
-    .clk_i          (clk_sys),
-    .rst_ni         (rst_sys_n),
-
-    .tl_i           (tl_mem_h2d),
-    .tl_o           (tl_mem_d2h),
-
-    .rom_o          (rom_o),
-    .rom_i          (rom_i),
-
-    .ram_o          (ram_o),
-    .ram_i          (ram_i)
-  );
-
-  // DFI memory training GPIO interface
-  dfi_gpio u_dfi_gpio (
-    .clk_i            (clk_i),
-    .rst_ni           (rst_ni),
-
-    .tl_i             (tl_dev_h2d[0]),
-    .tl_o             (tl_dev_d2h[0]),
-
-    .dfi_init_start_i (dfi_init_start_i),
-    .dfi_init_done_o  (dfi_init_done_o)
-  );
-
-  // UART
-  uart u_uart (
-    .clk_i          (clk_sys),
-    .rst_ni         (rst_sys_n),
-
-    .tl_i           (tl_dev_h2d[1]),
-    .tl_o           (tl_dev_d2h[1]),
-
-    .cio_rx_i       (rx),
-    .cio_tx_o       (tx),
-    .cio_tx_en_o    (), // Unused for now
-
-    .intr_tx_watermark_o    (),
-    .intr_rx_watermark_o    (),
-    .intr_tx_empty_o        (),
-    .intr_rx_overflow_o     (),
-    .intr_rx_frame_err_o    (),
-    .intr_rx_break_err_o    (),
-    .intr_rx_timeout_o      (),
-    .intr_rx_parity_err_o   ()
-  );
-
-  // PHY
-  phy u_phy (
-    .clk(clk_i),
-    .rst(~rst_ni),
-
-    .tl_i(tl_dev_h2d[2]),
-    .tl_o(tl_dev_d2h[2]),
-
-    .*
+      .re_o(), // unused
+      .we_o(csr_we),
+      .addr_o(csr_adr),
+      .wdata_o(csr_dat_w),
+      .be_o({top_pkg::TL_DBW{1'b1}}),
+      .busy_i(1'b0),
+      .rdata_i(csr_dat_r),
+      .error_i(1'b0)
   );
 
 endmodule
