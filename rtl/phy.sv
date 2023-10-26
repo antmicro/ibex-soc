@@ -200,7 +200,7 @@ module phy
       .we_o(csr_we),
       .addr_o(csr_adr),
       .wdata_o(csr_dat_w),
-      .be_o({top_pkg::TL_DBW{1'b1}}),
+      .be_o(),
       .busy_i(1'b0),
       .rdata_i(csr_dat_r),
       .error_i(1'b0)

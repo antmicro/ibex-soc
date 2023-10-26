@@ -41,17 +41,16 @@ RDL_SOURCES := \
 
 SOURCES := $(shell find rtl/ -name "*.sv" -not -name "*pkg*")
 SOURCES += \
-    $(XILINX_UNISIM_LIBRARY)/unisims/OSERDESE2.v \
-    $(XILINX_UNISIM_LIBRARY)/unisims/ODELAYE2.v \
-    $(XILINX_UNISIM_LIBRARY)/unisims/ISERDESE2.v \
-    $(XILINX_UNISIM_LIBRARY)/unisims/IDELAYE2.v \
+    $(XILINX_UNISIM_LIBRARY)/glbl.v \
     $(XILINX_UNISIM_LIBRARY)/unisims/IOBUF.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/OBUFDS.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/IOBUFDS.v \
     $(XILINX_UNISIM_LIBRARY)/unisims/FDCE.v \
+    $(XILINX_UNISIM_LIBRARY)/unisims/FDPE.v \
     $(XILINX_UNISIM_LIBRARY)/unisims/BUFG.v \
     $(XILINX_UNISIM_LIBRARY)/unisims/IDELAYCTRL.v
 
 INCLUDES := \
-    $(XILINX_UNISIM_LIBRARY)/glbl.v \
     $(IBEX_DIR)/rtl \
     $(OPENTITAN_DIR)/hw/ip/prim/rtl \
     $(IBEX_DIR)/vendor/lowrisc_ip/dv/sv/dv_utils
@@ -85,9 +84,12 @@ $(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $
 	verilator --Mdir $(BUILD_DIR)/verilator --cc --exe --top-module sim_top \
         -DRVFI=1 \
         -Wno-fatal \
+        -Wno-BLKANDNBLK \
         --timing \
         --trace --trace-structs \
         --bbox-unsup \
+        --report-unoptflat \
+        --prof-cfuncs -CFLAGS -DVL_DEBUG \
         $(shell cat $<) ../../src/testbench.cpp
 	$(MAKE) -C $(BUILD_DIR)/verilator -f Vsim_top.mk
 	@touch $@

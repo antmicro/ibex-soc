@@ -1,5 +1,6 @@
 // Copyright Antmicro 2023
 // SPDX-License-Identifier: Apache-2.0
+`timescale 1ns / 1ps
 
 module sim_top import mem_pkg::*; import top_pkg::*; ();
 
@@ -20,6 +21,8 @@ module sim_top import mem_pkg::*; import top_pkg::*; ();
   mem_pkg::mem_d2h_t ram_d2h;
 
   logic uart_tx;
+
+  glbl glbl();
 
   // DUT top
   top u_top (
