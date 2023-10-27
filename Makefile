@@ -59,10 +59,16 @@ GENERATED := generated/gateware/phy_core.v
 
 all: verilator-build
 
+$(ROOT_DIR)/third_party/XilinxUnisimLibrary/xul_patch.ok:
+	cd $(ROOT_DIR)/third_party/XilinxUnisimLibrary/ && \
+    git restore . && \
+    git apply ../00-xul_fdpe_fix.patch && \
+    cd - && touch $@
+
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/$(GENERATED): | $(BUILD_DIR)
+$(BUILD_DIR)/$(GENERATED): $(ROOT_DIR)/third_party/XilinxUnisimLibrary/xul_patch.ok | $(BUILD_DIR)
 	python3 $(SRC_DIR)/gen.py --output-dir $(BUILD_DIR)/generated --name phy_core \
 	$(PHY_CONFIG)
 
@@ -131,5 +137,6 @@ tests: rtl-tests sim-tests
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(RUN_DIR)
+	rm $(ROOT_DIR)/third_party/XilinxUnisimLibrary/xul_patch.ok
 
 .PHONY: verilator-build rtl-tests sim-tests tests clean

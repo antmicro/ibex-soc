@@ -1,0 +1,13 @@
+diff --git a/verilog/src/unisims/FDPE.v b/verilog/src/unisims/FDPE.v
+index 2597c6c..e2836da 100644
+--- a/verilog/src/unisims/FDPE.v
++++ b/verilog/src/unisims/FDPE.v
+@@ -78,7 +78,7 @@ module FDPE #(
+ 
+   reg Q_out;
+ 
+-  assign #100 Q = Q_out;
++  assign Q = Q_out;
+ 
+     always @(glblGSR or PRE_in)
+       if (glblGSR) 

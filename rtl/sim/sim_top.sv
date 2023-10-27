@@ -23,6 +23,7 @@ module sim_top import mem_pkg::*; import top_pkg::*; ();
   logic uart_tx;
 
   glbl glbl();
+  defparam glbl.ROC_WIDTH = 0.5;
 
   // DUT top
   top u_top (
