@@ -27,6 +27,7 @@ SECTIONS {
 
     .text : ALIGN(4) {
         . = 0x80;
+        *(.text.init)
         *(.text*)
     } >ROM
 
@@ -44,3 +45,5 @@ SECTIONS {
         _bss_end = .;
     } >RAM
 }
+
+_stack = ORIGIN(RAM) + LENGTH(RAM) - 16;
