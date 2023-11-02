@@ -1,0 +1,24 @@
+// Copyright Antmicro 2023
+// SPDX-License-Identifier: Apache-2.0
+
+addrmap phy_csr {
+    desc = "PHY CSR component to control pseudo PHY backend";
+
+    reg {
+        name = "ZQ configuration";
+        desc = "ZQ configuration value";
+        field {sw=w; hw=r;} zq_config[7];
+    } zq_config;
+
+    reg {
+        name = "ZQ calibration enable";
+        desc = "ZQ calibration enable signal";
+        field {sw=w; hw=r;} zq_cal_en;
+    } zq_cal;
+
+    reg {
+        name = "PHY comparator out";
+        desc = "Comparator output used for verifying ZQ calibration result";
+        field {sw=r; hw=w;} comparator_out;
+    } phy_feedback;
+};

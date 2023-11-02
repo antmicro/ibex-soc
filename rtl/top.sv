@@ -119,4 +119,13 @@ module top
     .intr_rx_timeout_o      (),
     .intr_rx_parity_err_o   ()
   );
+
+  // DFI memory training GPIO interface
+  phy_wrapper u_phy_wrapper (
+    .clk_i            (clk_i),
+    .rst_ni           (rst_ni),
+
+    .tl_i             (tl_dev_h2d[2]),
+    .tl_o             (tl_dev_d2h[2])
+  );
 endmodule

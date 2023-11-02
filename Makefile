@@ -34,7 +34,9 @@ OPENTITAN_SOURCES := \
 
 RDL_SOURCES := \
     $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr_pkg.sv \
-    $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr.sv
+    $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr.sv \
+    $(BUILD_DIR)/phy/phy_csr_pkg.sv \
+    $(BUILD_DIR)/phy/phy_csr.sv
 
 SOURCES := $(shell find rtl/ -name "*.sv" -not -name "*pkg*")
 
@@ -59,6 +61,7 @@ $(BUILD_DIR)/filelist.f: | $(BUILD_DIR)
 
 $(RDL_SOURCES):
 	peakrdl regblock $(RTL_DIR)/gpio.rdl -o $(BUILD_DIR)/dfi_gpio --cpuif passthrough
+	peakrdl regblock $(RTL_DIR)/phy.rdl -o $(BUILD_DIR)/phy --cpuif passthrough
 
 $(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $(BUILD_DIR)
 	@verilator --version
