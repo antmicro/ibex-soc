@@ -1,0 +1,2 @@
+DDR reset CSR:1
+DDR reset CSR:0
