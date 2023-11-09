@@ -112,6 +112,15 @@ verilator-build: $(BUILD_DIR)/verilator.ok
 $(RUN_DIR):
 	mkdir -p $(RUN_DIR)
 
+firmware-build: | $(RUN_DIR)
+	mkdir -p $(RUN_DIR)/sim/fw
+	cd $(RUN_DIR)/sim && $(MAKE) -f $(ROOT_DIR)/fw/Makefile build
+	cp $(RUN_DIR)/sim/fw/fw.hex $(RUN_DIR)/sim/fw/rom.hex
+
+sim-firmware: verilator-build firmware-build | $(RUN_DIR)
+	cp $(RUN_DIR)/sim/fw/fw.hex $(RUN_DIR)/sim/fw/rom.hex
+	cd $(RUN_DIR)/sim/fw && $(BUILD_DIR)/verilator/Vsim_top
+
 RTL_TESTS := $(shell find $(TESTS_DIR)/rtl/ -mindepth 1 -maxdepth 1 -type d -not -path "*/__pycache__" -printf "%f ")
 
 define rtl_test_target
