@@ -343,6 +343,7 @@ class DRAMPHYSoC(LiteXModule, SoCCoreCompat):
         self.csr.regions = {k: v for k, v in sorted(self.csr.regions.items(), key=lambda item: item[1].origin)}
 
         # Add CSRs / Config items to constants.
+        self.constants["CONFIG_CSR_DATA_WIDTH"] = SoCConstant(self.csr.data_width)
         for name, constant in self.csr_bankarray.constants:
             self.add_constant(name + "_" + constant.name, constant.value.value)
 
