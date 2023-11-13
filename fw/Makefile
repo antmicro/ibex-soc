@@ -4,7 +4,7 @@
 CURDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BUILD_DIR = $(CURDIR)/../build
 
-SOURCES = crt0.S ibex.c main.c \
+SOURCES = crt0.S ibex.c main.c uart.c \
     liblitedram/sdram.c liblitedram/bist.c \
     liblitedram/sdram_dbg.c liblitedram/sdram_spd.c \
     liblitedram/utils.c liblitedram/accessors.c liblitedram/sdram_rcd.c
