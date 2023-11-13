@@ -4,11 +4,10 @@
 CURDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BUILD_DIR = $(CURDIR)/../build
 
-SOURCES = main.c \
+SOURCES = crt0.S ibex.c main.c \
     liblitedram/sdram.c liblitedram/bist.c \
     liblitedram/sdram_dbg.c liblitedram/sdram_spd.c \
-    liblitedram/utils.c liblitedram/accessors.c liblitedram/sdram_rcd.c \
-    liblitedram/ddr5_training.c liblitedram/ddr5_helpers.c
+    liblitedram/utils.c liblitedram/accessors.c liblitedram/sdram_rcd.c
 TARGET  = fw
 
 TOOLCHAIN ?= riscv64-unknown-elf
@@ -19,7 +18,7 @@ ABI       ?= ilp32e
 OBJS     = $(addprefix $(TARGET)/,$(patsubst %.S,%.o,$(filter %.S,$(SOURCES))))
 OBJS    += $(addprefix $(TARGET)/,$(patsubst %.c,%.o,$(filter %.c,$(SOURCES))))
 
-CFLAGS   = -march=$(ARCH) -mabi=$(ABI) --specs=picolibc.specs --crt0=hosted
+CFLAGS   = -march=$(ARCH) -mabi=$(ABI) --specs=picolibc.specs -nostartfiles
 CFLAGS  += -I$(BUILD_DIR)/generated/software/include -I$(CURDIR) -I$(CURDIR)/include
 ASFLAGS  = $(CFLAGS)
 
