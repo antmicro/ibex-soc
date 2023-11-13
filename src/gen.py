@@ -20,7 +20,7 @@ from litex.gen.fhdl.hierarchy import LiteXHierarchyExplorer
 from litex.soc.integration.soc import LiteXSoC
 from litex.soc.integration.soc import SoCConstant, SoCCSRHandler, SoCRegion, SoCCSRRegion
 
-from litex.soc.interconnect.csr import CSR, CSRStorage, CSRStatus
+from litex.soc.interconnect.csr import CSR, CSRStorage, CSRStatus, AutoCSR
 from litex.soc.interconnect import csr_bus
 
 from litex.soc.cores.cpu import CPUNone
@@ -32,7 +32,7 @@ from litex.build.generic_platform import GenericPlatform, Pins, Subsignal
 from litex.soc.integration.builder import Builder
 
 from litedram import modules as litedram_modules
-from litedram.core import ControllerSettings
+from litedram.core.controller import ControllerSettings, LiteDRAMControllerRegisterBank, REGISTER_NAMES
 from litedram.phy import lpddr4 as lpddr4_phys
 
 from litedram.dfii import DFIInjector
@@ -103,6 +103,65 @@ def get_dram_ios(core_config):
                 Subsignal("reset_n", Pins(1))
             ),
         ]
+
+class DRAMControllerRegisterBank(LiteDRAMControllerRegisterBank):
+    def __init__(self, phy_settings, initial_timings, max_expected_values, memtype):
+        for reg in REGISTER_NAMES:
+            if reg == "tZQCS" and memtype in ["LPDDR4", "LPDDR5", "DDR5"]:
+                continue # ZQCS refresher does not work with LPDDR4, LPDDR5 and DDR5
+            try:
+                width = getattr(max_expected_values, reg)
+            except AttributeError:
+                width = None
+            width = (width.bit_length() + 1) if width is not None else 1
+            reset_val = None
+            if initial_timings is not None:
+                try:
+                    reset_val = getattr(initial_timings, reg)
+                except AttributeError:
+                    reset_val = None
+            csr = CSRStorage(width, name=reg, reset=reset_val if reset_val is not None else 0)
+            assert reset_val is None or reset_val < 2**width, (reg, reset_val, 2**width)
+            setattr(self, reg, csr)
+
+# DummyDRAMControler -----------------------------------------------------------------------------
+
+class DummyDRAMController(Module):
+    def __init__(self, phy_settings, geom_settings, timing_settings, max_expected_values):
+        # Settings -------------------------------------------------------------
+        self.settings        = ControllerSettings()
+        self.settings.phy    = phy_settings
+        self.settings.geom   = geom_settings
+        self.settings.timing = timing_settings
+
+        # Registers ------------------------------------------------------------
+        self.registers = registers = DRAMControllerRegisterBank(
+            phy_settings, timing_settings, max_expected_values,
+            phy_settings.memtype)
+
+    def get_csrs(self):
+        return self.registers.get_csrs()
+
+# DummyDRAMCore ----------------------------------------------------------------------------------
+
+class DummyDRAMCore(Module, AutoCSR):
+    def __init__(self, phy, module):
+        self.submodules.dfii = DFIInjector(
+            addressbits = max(module.geom_settings.addressbits, getattr(phy, "addressbits", 0)),
+            bankbits    = max(module.geom_settings.bankbits, getattr(phy, "bankbits", 0)),
+            nranks      = phy.settings.nranks,
+            databits    = phy.settings.dfi_databits,
+            nphases     = phy.settings.nphases,
+            memtype     = phy.settings.memtype,
+            strobes     = phy.settings.strobes,
+            with_sub_channels= phy.settings.with_sub_channels)
+        self.comb += self.dfii.master.connect(phy.dfi)
+
+        self.submodules.controller = DummyDRAMController(
+            phy_settings        = phy.settings,
+            geom_settings       = module.geom_settings,
+            timing_settings     = module.timing_settings,
+            max_expected_values = module.maximal_timing_values)
 
 # DRAMPHYSoC -------------------------------------------------------------------------------------
 
@@ -231,19 +290,8 @@ class DRAMPHYSoC(LiteXModule, SoCCoreCompat):
 
         # DFI Injector --------------------------------------------------------
 
-        self.submodules.dfii = dfii = DFIInjector(
-            addressbits = max(sdram_module.geom_settings.addressbits, getattr(phy, "addressbits", 0)),
-            bankbits    = max(sdram_module.geom_settings.bankbits, getattr(phy, "bankbits", 0)),
-            nranks      = phy.settings.nranks,
-            databits    = phy.settings.dfi_databits,
-            nphases     = phy.settings.nphases,
-            memtype     = phy.settings.memtype,
-            strobes     = phy.settings.strobes,
-            with_sub_channels = phy.settings.with_sub_channels)
-
-        self.comb += dfii.master.connect(phy.dfi)
-
-        self.expose_dfi(platform, dfii.slave)
+        self.submodules.sdram = sdram = DummyDRAMCore(phy, sdram_module)
+        self.expose_dfi(platform, sdram.dfii.slave)
 
         # Collect Controller Settings.
         controller_settings_kwargs = {}
@@ -344,6 +392,10 @@ class DRAMPHYSoC(LiteXModule, SoCCoreCompat):
 
         # Add CSRs / Config items to constants.
         self.constants["CONFIG_CSR_DATA_WIDTH"] = SoCConstant(self.csr.data_width)
+        self.constants["CONFIG_CPU_NOP"] = SoCConstant("nop")
+        self.constants["SDRAM_TEST_DISABLE"] = SoCConstant(None)
+        self.constants["MAIN_RAM_BASE"] = SoCConstant(0xffffffff)
+        self.constants["MAIN_RAM_SIZE"] = SoCConstant(0)
         for name, constant in self.csr_bankarray.constants:
             self.add_constant(name + "_" + constant.name, constant.value.value)
 
