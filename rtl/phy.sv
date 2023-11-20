@@ -185,7 +185,9 @@ module phy
 
   tlul_adapter_reg #(
       .RegAw(top_pkg::TL_AW),
-      .RegDw(top_pkg::TL_DW)
+      .RegDw(top_pkg::TL_DW),
+      .EnableRspIntgGen(1'b1),
+      .EnableDataIntgGen(1'b1)
   ) u_tlul_adapter_reg (
       .clk_i (clk),
       .rst_ni(~rst),
