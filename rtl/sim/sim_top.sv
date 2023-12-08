@@ -26,7 +26,7 @@ module sim_top import mem_pkg::*; import top_pkg::*; ();
   defparam glbl.ROC_WIDTH = 0.5;
 
   // DUT top
-  top u_top (
+  dram_phy_soc_top u_top (
     .clk_i      (clk),
     .rst_ni     (rst_n),
 

@@ -1,7 +1,7 @@
 // Copyright Antmicro 2023
 // SPDX-License-Identifier: Apache-2.0
 
-module top 
+module dram_phy_soc_top 
     import top_pkg::*;
     import mem_pkg::*;
     import tlul_pkg::*;

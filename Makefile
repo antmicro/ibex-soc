@@ -39,7 +39,7 @@ RDL_SOURCES := \
     $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr_pkg.sv \
     $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr.sv
 
-SOURCES := $(shell find rtl/ -name "*.sv" -not -name "*pkg*")
+SOURCES := $(shell find $(RTL_DIR) -name "*.sv" -not -name "*pkg*")
 SOURCES += \
     $(XILINX_UNISIM_LIBRARY)/glbl.v \
     $(XILINX_UNISIM_LIBRARY)/unisims/IOBUF.v \
