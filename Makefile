@@ -40,7 +40,8 @@ RDL_SOURCES := \
     $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr.sv
 
 SOURCES := $(shell find $(RTL_DIR) -name "*.sv" -not -name "*pkg*")
-SOURCES += \
+
+UNISIM_SOURCES := \
     $(XILINX_UNISIM_LIBRARY)/glbl.v \
     $(XILINX_UNISIM_LIBRARY)/unisims/IOBUF.v \
     $(XILINX_UNISIM_LIBRARY)/unisims/OBUFDS.v \
@@ -57,7 +58,7 @@ INCLUDES := \
 
 GENERATED := generated/gateware/phy_core.v
 
-all: verilator-build
+all: gen verilator-build
 
 $(ROOT_DIR)/third_party/XilinxUnisimLibrary/xul_patch.ok:
 	cd $(ROOT_DIR)/third_party/XilinxUnisimLibrary/ && \
@@ -85,7 +86,9 @@ $(BUILD_DIR)/filelist.f: $(BUILD_DIR)/$(GENERATED) | $(BUILD_DIR)
 $(RDL_SOURCES):
 	peakrdl regblock $(RTL_DIR)/gpio.rdl -o $(BUILD_DIR)/dfi_gpio --cpuif passthrough
 
-$(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $(BUILD_DIR)
+gen: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $(BUILD_DIR)
+
+$(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f gen $(UNISIM_SOURCES) | $(BUILD_DIR)
 	@verilator --version
 	verilator --Mdir $(BUILD_DIR)/verilator --cc --exe --top-module sim_top \
         -DRVFI=1 \
@@ -96,7 +99,7 @@ $(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $
         --bbox-unsup \
         --report-unoptflat \
         --prof-cfuncs -CFLAGS -DVL_DEBUG \
-        $(shell cat $<) ../../src/testbench.cpp
+        $(shell cat $<) $(UNISIM_SOURCES) ../../src/testbench.cpp
 	$(MAKE) -C $(BUILD_DIR)/verilator -f Vsim_top.mk
 	@touch $@
 
@@ -139,4 +142,4 @@ clean:
 	rm -rf $(RUN_DIR)
 	rm $(ROOT_DIR)/third_party/XilinxUnisimLibrary/xul_patch.ok
 
-.PHONY: verilator-build rtl-tests sim-tests tests clean
+.PHONY: gen verilator-build rtl-tests sim-tests tests clean
