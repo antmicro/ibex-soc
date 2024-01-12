@@ -31,7 +31,7 @@ module cpu import ibex_pkg::*; import tlul_pkg::*; (
   ibex_pkg::crash_dump_t crash_dump_nc;
 
   // Ibex core
-  ibex_tlul_top_tracing #(
+  ibex_tlul_top #(
     .ICacheScramble         (1'b0),
     .PMPEnable              (1'b0),
     .PMPGranularity         (0),
