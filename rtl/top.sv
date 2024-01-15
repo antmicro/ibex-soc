@@ -6,9 +6,13 @@ module dram_phy_soc_top
     import mem_pkg::*;
     import tlul_pkg::*;
 (
-    // Clock and reset
+    // Clock and reset inputs
     input  wire clk_i,
     input  wire rst_ni,
+
+    // Clock and reset outputs
+    output wire clk_1x_o,
+    output wire rst_1x_o,
 
     // ROM interface
     output mem_pkg::mem_h2d_t rom_o,
@@ -205,6 +209,8 @@ module dram_phy_soc_top
   wire rst_sys_n;
 
   assign rst_sys_n = ~rst_sys;
+  assign clk_1x_o = clk_sys;
+  assign rst_1x_o = rst_sys;
 
   // CPU
   cpu u_cpu (
