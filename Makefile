@@ -39,7 +39,11 @@ RDL_SOURCES := \
     $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr_pkg.sv \
     $(BUILD_DIR)/dfi_gpio/dfi_gpio_csr.sv
 
-SOURCES := $(shell find $(RTL_DIR) -name "*.sv" -not -name "*pkg*")
+SOURCES := $(shell find $(RTL_DIR) -name "*.sv" -not -name "*pkg*" -not -name "*sim*") \
+    $(RTL_DIR)/sim/sim_rom.sv \
+    $(RTL_DIR)/sim/sim_ram.sv
+
+SIM_SOURCES := $(shell find $(RTL_DIR) -name "sim*.sv" -not -name "*pkg*" -not -name "*sim_r*m.sv")
 
 UNISIM_SOURCES := \
     $(XILINX_UNISIM_LIBRARY)/glbl.v \
@@ -88,7 +92,7 @@ $(RDL_SOURCES):
 
 gen: $(BUILD_DIR)/filelist.f $(SOURCES) $(RDL_SOURCES) | $(BUILD_DIR)
 
-$(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f gen $(UNISIM_SOURCES) | $(BUILD_DIR)
+$(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f gen $(SIM_SOURCES) $(UNISIM_SOURCES) | $(BUILD_DIR)
 	@verilator --version
 	verilator --Mdir $(BUILD_DIR)/verilator --cc --exe --top-module sim_top \
         -DRVFI=1 \
@@ -99,7 +103,7 @@ $(BUILD_DIR)/verilator.ok: $(BUILD_DIR)/filelist.f gen $(UNISIM_SOURCES) | $(BUI
         --bbox-unsup \
         --report-unoptflat \
         --prof-cfuncs -CFLAGS -DVL_DEBUG \
-        $(shell cat $<) $(UNISIM_SOURCES) ../../src/testbench.cpp
+        $(shell cat $<) $(UNISIM_SOURCES) $(SIM_SOURCES) ../../src/testbench.cpp
 	$(MAKE) -C $(BUILD_DIR)/verilator -f Vsim_top.mk
 	@touch $@
 
