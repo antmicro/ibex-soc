@@ -266,8 +266,8 @@ module dram_phy_soc_top
 
   // DFI memory training GPIO interface
   dfi_gpio u_dfi_gpio (
-    .clk_i            (clk_i),
-    .rst_ni           (rst_ni),
+    .clk_i            (clk_sys),
+    .rst_ni           (rst_sys_n),
 
     .tl_i             (tl_dev_h2d[0]),
     .tl_o             (tl_dev_d2h[0]),

@@ -189,8 +189,8 @@ module phy
       .EnableRspIntgGen(1'b1),
       .EnableDataIntgGen(1'b1)
   ) u_tlul_adapter_reg (
-      .clk_i (clk),
-      .rst_ni(~rst),
+      .clk_i (clk_sys),
+      .rst_ni(~rst_sys),
 
       .tl_i(tl_i),
       .tl_o(tl_o),
