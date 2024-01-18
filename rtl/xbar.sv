@@ -26,7 +26,13 @@ module xbar import top_pkg::*; import tlul_pkg::*; # (
   tlul_pkg::tl_d2h_t tl_d2h;
 
   // TileLink master port mux M:1
-  tlul_socket_m1 #(.M(M)) u_tlul_m1 (
+  tlul_socket_m1 #(
+    .M        (M),
+    .HReqPass ({M{1'b0}}),
+    .HRspPass ({M{1'b0}}),
+    .DReqPass (1'b0),
+    .DRspPass (1'b0)
+  ) u_tlul_m1 (
     .clk_i          (clk_i),
     .rst_ni         (rst_ni),
 
@@ -87,7 +93,11 @@ module xbar import top_pkg::*; import tlul_pkg::*; # (
 
   tlul_socket_1n #(
     .N              (N+1),
-    .ExplicitErrs   (1'b1)
+    .ExplicitErrs   (1'b1),
+    .DReqPass       ({N{1'b0}}),
+    .DRspPass       ({N{1'b0}}),
+    .HReqPass       (1'b0),
+    .HRspPass       (1'b0)
   ) u_tlul_n1 (
     .clk_i          (clk_i),
     .rst_ni         (rst_ni),

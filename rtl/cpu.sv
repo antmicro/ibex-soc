@@ -41,7 +41,7 @@ module cpu import ibex_pkg::*; import tlul_pkg::*; (
     .RV32E                  (1'b1),
     .RV32M                  (ibex_pkg::RV32MNone),
     .RV32B                  (ibex_pkg::RV32BNone),
-    .RegFile                (ibex_pkg::RegFileFF),
+    .RegFile                (ibex_pkg::RegFileFPGA),
     .BranchTargetALU        (1'b0),
     .ICache                 (1'b0),
     .ICacheECC              (1'b0),
