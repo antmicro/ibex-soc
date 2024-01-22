@@ -21,27 +21,31 @@ module sim_ram # (
 );
 
   localparam EffectiveAw = $clog2(SIZE);
+  localparam Bytes       = DW / 8;
 
   // The memory
+  (* ram_style = "block" *)
   logic [DW-1:0] mem [SIZE];
-  logic [DW-1:0] mask;
-
-  // Per-bit mask
-  for (genvar i = 0; i < DW; i++)
-    assign mask[i] = wmask[i / 8];
 
   // Write logic
-  always @(posedge clk_i)
-    if (rst_ni && we)
-      mem[addr[EffectiveAw-1:0]] <= (mem[addr[EffectiveAw-1:0]] & ~mask) |
-                                    (wdata & mask);
+  integer i;
+  always @(posedge clk_i) begin
+    if (rst_ni && we) begin
+      for (i=0; i<Bytes; i++) begin : gen_write_byte
+        if (wmask[i]) begin
+          mem[addr[EffectiveAw-1:0]][i*8 +: 8] <= wdata[i*8 +: 8];
+        end
+      end
+    end
+  end
 
   // Read logic
-  always @(posedge clk_i)
+  always @(posedge clk_i) begin
     if (rst_ni && !we) begin
       rdata  <= mem[addr[EffectiveAw-1:0]];
       rvalid <= req;
     end
+  end
+
 
 endmodule
-

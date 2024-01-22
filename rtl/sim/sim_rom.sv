@@ -22,6 +22,7 @@ module sim_rom # (
   localparam Bytes       = DW / 8;
 
   // The memory
+  (* ram_style = "block" *)
   logic [7:0] mem [SIZE];
   initial $readmemh(FILE, mem);
 
