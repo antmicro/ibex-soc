@@ -455,6 +455,8 @@ class DRAMPHYSoC(LiteXModule, SoCCoreCompat):
         for sig in ("clk", "rst"):
             pad_name = "{}_{}".format(sig, cd.name)
             pad = platform.request(pad_name)
+            if sig == "rst" and getattr(cd, sig, None) is None:
+                continue
             if ext_crg:
                 self.comb += pad.eq(getattr(cd, sig))
             else:

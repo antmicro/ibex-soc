@@ -17,8 +17,8 @@ class XilinxS7CRG(LiteXModule):
     def __init__(self, platform, core_config):
         self.rst         = Signal()
         self.cd_sys      = ClockDomain()
-        self.cd_sys2x    = ClockDomain()
-        self.cd_sys8x    = ClockDomain()
+        self.cd_sys2x    = ClockDomain(reset_less=True)
+        self.cd_sys8x    = ClockDomain(reset_less=True)
         self.cd_idelay   = ClockDomain()
 
         # # #
@@ -28,7 +28,7 @@ class XilinxS7CRG(LiteXModule):
         pll.register_clkin(platform.request("clk"), core_config["input_clk_freq"])
         pll.create_clkout(self.cd_sys,          core_config["sys_clk_freq"])
         pll.create_clkout(self.cd_sys2x,    2 * core_config["sys_clk_freq"])
-        pll.create_clkout(self.cd_sys8x,    8 * core_config["sys_clk_freq"])
+        pll.create_clkout(self.cd_sys8x,    8 * core_config["sys_clk_freq"], phase=-45)
         pll.create_clkout(self.cd_idelay,   core_config["iodelay_clk_freq"])
 
         self.idelayctrl = S7IDELAYCTRL(self.cd_idelay)
