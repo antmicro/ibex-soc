@@ -10,7 +10,7 @@ volatile uint32_t* dfi_gpio_regs = (uint32_t *)REG_DFI_GPIO;
 
 int main(void)
 {
-    uart_init();
+    uart_init(115200);
     puts("TRISTAN DDR/DFI PHY (Gen 2)");
 
     for (;;) {
