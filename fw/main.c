@@ -15,13 +15,20 @@ int main(void)
 
     for (;;) {
         dfi_gpio_regs[DFI_GPIO_INIT_DONE] = 0x00;
-        while (dfi_gpio_regs[DFI_GPIO_INIT_START] == 0) {}
 
+        puts("-- wait trigger");
+        while ((dfi_gpio_regs[DFI_GPIO_INIT_START] & 1) == 0) {}
+
+        puts("-- init start");
         sdram_init();
+        puts("-- init done");
 
         dfi_gpio_regs[DFI_GPIO_INIT_DONE] = 0x01;
-        while (dfi_gpio_regs[DFI_GPIO_INIT_START] == 1) {}
+
+        puts("-- wait release");
+        while ((dfi_gpio_regs[DFI_GPIO_INIT_START] & 1) == 1) {}
     }
 
     return 0;
 }
+
