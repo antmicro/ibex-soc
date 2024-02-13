@@ -176,16 +176,22 @@ module phy
     output tlul_pkg::tl_d2h_t tl_o
 );
 
-  wire [ 9:0] csr_adr;
-  wire        csr_we;
-  wire [31:0] csr_dat_w;
-  wire [31:0] csr_dat_r;
+  localparam int AW = 12;
+
+  wire    [AW-3:0] csr_adr;     // word-addressed
+  wire    [AW-1:0] csr_adr_b;   // byte-addressed
+  wire             csr_we;
+  wire [TL_DW-1:0] csr_dat_w;
+  wire [TL_DW-1:0] csr_dat_r;
+
+  assign csr_adr = csr_adr_b[AW-1:2];   // LiteX CSR bus uses word addressing
 
   phy_core u_phy_core (.*);
 
   tlul_adapter_reg #(
-      .RegAw(top_pkg::TL_AW),
-      .RegDw(top_pkg::TL_DW),
+      .RegAw(AW),
+      .RegDw(TL_DW),
+      .AccessLatency(1),        // LiteX CSR bus is sequential
       .EnableRspIntgGen(1'b1),
       .EnableDataIntgGen(1'b1)
   ) u_tlul_adapter_reg (
@@ -195,12 +201,12 @@ module phy
       .tl_i(tl_i),
       .tl_o(tl_o),
 
-      .en_ifetch_i (MuBi4True),
+      .en_ifetch_i (MuBi4False),
       .intg_error_o(), // unused
 
       .re_o(), // unused
       .we_o(csr_we),
-      .addr_o(csr_adr),
+      .addr_o(csr_adr_b),
       .wdata_o(csr_dat_w),
       .be_o(),
       .busy_i(1'b0),
