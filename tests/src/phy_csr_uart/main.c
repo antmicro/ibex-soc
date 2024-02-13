@@ -2,7 +2,7 @@
 #include "csr.h"
 
 // Base address of the UART peripheral
-volatile uint32_t* uart_regs = 0xC0000400;
+volatile uint32_t* uart_regs = (volatile uint32_t *)0xC0001000;
 
 // From https://opentitan.org/book/hw/ip/uart/doc/registers.html
 #define UART_INTR_STATE_REG      (0x0  / 4)
@@ -39,15 +39,17 @@ int uart_tx_busy() {
 
 int main(int argc, char* argv[]) {
 
-    const char* str = "DDR reset CSR:";
+    const char* str1 = "rst:";
+    const char* str2 = "wr lvl EN:";
     int ddr_rst = 0;
+    int ddr_wlevel_en = 0;
 
     // Initialize UART
     uart_init();
 
     // Write a string
-    for (int i=0; str[i]; ++i) {
-        uart_putc(str[i]);
+    for (int i=0; str1[i]; ++i) {
+        uart_putc(str1[i]);
     }
     ddrphy_rst_write(1);
     ddr_rst = ddrphy_rst_read();
@@ -57,14 +59,35 @@ int main(int argc, char* argv[]) {
     while (uart_tx_busy());
 
     // Write a string
-    for (int i=0; str[i]; ++i) {
-        uart_putc(str[i]);
+    for (int i=0; str1[i]; ++i) {
+        uart_putc(str1[i]);
     }
     ddrphy_rst_write(0);
     ddr_rst = ddrphy_rst_read();
     uart_putc(ddr_rst + 48);
     uart_putc('\n');
+    // Wait for transmission of all the characters
+    while (uart_tx_busy());
 
+    // Write a string
+    for (int i=0; str2[i]; ++i) {
+        uart_putc(str2[i]);
+    }
+    ddrphy_wlevel_en_write(1);
+    ddr_wlevel_en = ddrphy_wlevel_en_read();
+    uart_putc(ddr_wlevel_en + 48);
+    uart_putc('\n');
+    // Wait for transmission of all the characters
+    while (uart_tx_busy());
+
+    // Write a string
+    for (int i=0; str2[i]; ++i) {
+        uart_putc(str2[i]);
+    }
+    ddrphy_wlevel_en_write(0);
+    ddr_wlevel_en = ddrphy_wlevel_en_read();
+    uart_putc(ddr_wlevel_en + 48);
+    uart_putc('\n');
     // Wait for transmission of all the characters
     while (uart_tx_busy());
 

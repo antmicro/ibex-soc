@@ -1,2 +1,4 @@
-DDR reset CSR:1
-DDR reset CSR:0
+rst:1
+rst:0
+wr lvl EN:1
+wr lvl EN:0
