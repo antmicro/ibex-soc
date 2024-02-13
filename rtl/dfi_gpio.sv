@@ -20,16 +20,18 @@ module dfi_gpio
   output logic dfi_init_done_o
 );
 
+localparam int AW = 3;
+
 wire cpuif_req;
 wire cpuif_req_is_wr;
-wire [31:0] cpuif_addr;
-wire [31:0] cpuif_wr_data;
-wire [3:0] cpuif_wr_byte_en;
+wire     [AW-1:0] cpuif_addr;
+wire    [TL_DW:0] cpuif_wr_data;
+wire [TL_DBW-1:0] cpuif_wr_byte_en;
 wire cpuif_req_stall_wr;
 wire cpuif_req_stall_rd;
 wire cpuif_rd_ack;
 wire cpuif_rd_err;
-wire [31:0] cpuif_rd_data;
+wire    [TL_DW:0] cpuif_rd_data;
 wire cpuif_wr_ack;
 wire cpuif_wr_err;
 
@@ -68,8 +70,8 @@ dfi_gpio_csr u_dfi_gpio_csr (
 );
 
 tlul_adapter_reg #(
-  .RegAw(top_pkg::TL_AW),
-  .RegDw(top_pkg::TL_DW),
+  .RegAw(AW),
+  .RegDw(TL_DW),
   .EnableRspIntgGen(1'b1),
   .EnableDataIntgGen(1'b1)
 ) u_tlul_adapter_reg (
