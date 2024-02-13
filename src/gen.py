@@ -181,7 +181,7 @@ class DRAMPHYSoC(LiteXModule, SoCCoreCompat):
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
 
-        csr_base            = core_config.get("csr_base", 0x00000000)
+        csr_base            = 0xC0002000
         csr_data_width      = 32
         csr_address_width   = 10    # 1024
         csr_paging          = 0x100 # 256

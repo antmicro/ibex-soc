@@ -32,6 +32,5 @@
     "iodelay_clk_freq": 200e6,
 
     # Core ---------------------------------------------------------------------
-    "csr_base":         0xC0000800, # CSR bank base address
     "cmd_buffer_depth": 16,    # Depth of the command buffer
 }
