@@ -215,7 +215,7 @@ regions = [
 
 for i in range(7):
     regions.append(
-        ("d{}".format(i), (0xC0000000 + i * 1024, 0xC0000000 + (i+1) * 1024 - 4))
+        ("d{}".format(i), (0xC0000000 + i * 4096, 0xC0000000 + (i+1) * 4096 - 4))
     )
 
 tf = cocotb.regression.TestFactory(region_write)

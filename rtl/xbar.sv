@@ -61,9 +61,9 @@ module xbar import top_pkg::*; import tlul_pkg::*; # (
   // Memory space
   assign dev_select_onehot[0] = sel_memory & ~sel_device;
 
-  // Assign 1kB space for each device starting from 0xC0000000
+  // Assign 4kB space for each device starting from 0xC0000000
   generate for (genvar i=0; i<N; i++)
-    assign dev_select_onehot[i+1] = sel_device & (dev_address[29:10] == i);
+    assign dev_select_onehot[i+1] = sel_device & (dev_address[29:12] == i);
   endgenerate
 
   // One-hot to binary
