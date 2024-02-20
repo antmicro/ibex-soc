@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 // Base address of the UART peripheral
-volatile uint32_t* uart_regs = 0xC0000400;
+volatile uint32_t* uart_regs = (volatile uint32_t *)0xC0001000;
 
 // From https://opentitan.org/book/hw/ip/uart/doc/registers.html
 #define UART_INTR_STATE_REG      (0x0  / 4)
