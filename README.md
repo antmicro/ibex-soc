@@ -1,5 +1,7 @@
 # Ibex-based RISC-V SoC for testing DRAM PHY
 
+Copyright (c) 2023-2024 [Antmicro](https://antmicro.com)
+
 ## Prerequisities
 
 - Verilator (version >5.000)
