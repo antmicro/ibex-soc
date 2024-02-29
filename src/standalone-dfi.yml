@@ -27,6 +27,7 @@
     # Frequency ----------------------------------------------------------------
     "crg":              "XilinxK7CRG",
     "platform":         "Xilinx7SeriesPlatform",
+    "toolchain":        "vivado",
     "input_clk_freq":   100e6,
     "sys_clk_freq":     75e6,  # System clock frequency
     "iodelay_clk_freq": 200e6,

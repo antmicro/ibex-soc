@@ -552,7 +552,8 @@ def main():
     }
 
     platform_obj = core_config["platform"] if "platform" in core_config else NoPlatform
-    platform = platform_obj("", io=[])
+    toolchain = core_config["toolchain"] if "toolchain" in core_config else None
+    platform = platform_obj("", io=[], toolchain=toolchain)
     soc     = DRAMPHYSoC(platform, core_config)
     builder = Builder(soc, **builder_arguments)
     builder.build(build_name=args.name, regular_comb=False)
