@@ -31,7 +31,7 @@ IBEX_SOURCES := \
     $(OPENTITAN_DIR)/hw/ip/prim_generic/rtl/prim_generic_clock_gating.sv
 
 OPENTITAN_SOURCES := \
-    $(shell find $(OPENTITAN_DIR)/hw/ip/prim/rtl/ -name "*.sv" -not -name "*pkg*" -not -name "*edn*" -not -name "*lc*") \
+    $(shell find $(OPENTITAN_DIR)/hw/ip/prim/rtl/ -name "*.sv" -not -name "*pkg*" -not -name "*edn*" -not -name "*lc*" -not -name "*_clock_gp_mux2.sv") \
     $(shell find $(OPENTITAN_DIR)/hw/ip/uart/rtl/ -name "*.sv" -not -name "*pkg*") \
     $(shell find $(OPENTITAN_DIR)/hw/ip/tlul/rtl/ -name "*.sv" -not -name "*pkg*" -not -name "*lc*")
 
