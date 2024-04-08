@@ -74,7 +74,9 @@ jobs:
           make ${{ matrix.target }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
-          path: build
+          path: |
+            build
+            !build/**/*.vcd
